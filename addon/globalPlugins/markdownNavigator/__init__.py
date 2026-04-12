@@ -8,18 +8,32 @@ import controlTypes
 
 from .navigator import MarkdownEditorOverlay
 
+_SUPPORTED_EDITOR_WINDOW_CLASSES = frozenset(
+	{
+		"Scintilla",
+		"RICHEDIT50W",
+		"RichEditD2DPT",
+		"AkelEditW",
+	}
+)
+
+
+def _shouldApplyMarkdownOverlay(obj) -> bool:
+	"""Return whether Markdown navigation should be added to the control."""
+	windowClassName = getattr(obj, "windowClassName", "")
+	states = getattr(obj, "states", set())
+	role = getattr(obj, "role", None)
+	if role == controlTypes.Role.PASSWORDEDIT or controlTypes.State.PROTECTED in states:
+		return False
+	if windowClassName in _SUPPORTED_EDITOR_WINDOW_CLASSES:
+		return True
+	return role == controlTypes.Role.EDITABLETEXT and controlTypes.State.MULTILINE in states
+
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
+	"""Inject Markdown navigation overlays into supported editor controls."""
+
 	def chooseNVDAObjectOverlayClasses(self, obj, clsList):
-		# Apply to all EditableText objects (Edit controls, RichEdit, etc.)
-		# Also explicitly check for Scintilla to be safe, as sometimes Role might be unstable or specific
-		# Windows 11 Notepad uses RichEditD2DPT class
-		# Use getattr to safely access windowClassName, especially on Secure Desktops where it might be missing
-		windowClassName = getattr(obj, "windowClassName", "")
-		if (
-			obj.role == controlTypes.Role.EDITABLETEXT
-			or windowClassName == "Scintilla"
-			or windowClassName == "RichEditD2DPT"
-			or windowClassName == "AkelEditW"
-		):
+		"""Add the Markdown overlay to controls that can contain Markdown documents."""
+		if _shouldApplyMarkdownOverlay(obj):
 			clsList.insert(0, MarkdownEditorOverlay)
