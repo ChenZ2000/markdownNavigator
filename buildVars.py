@@ -23,11 +23,11 @@ addon_info = AddonInfo(
 	# Translators: Long description to be shown for this add-on on add-on information from add-on store
 	addon_description=_("""An NVDA add-on that provides structured navigation (headings, lists, tables, etc.) in editable text areas for Markdown files."""),
 	# version
-	addon_version="0.2.2",
+	addon_version="0.2.3",
 	# Brief changelog for this version
 	# Translators: what's new content for the add-on version to be shown in the add-on store
-	addon_changelog=_("""### 0.2.2
-This feature will be available in more editors."""),
+	addon_changelog=_("""### 0.2.3
+Fix bug in Microsoft PowerPoint."""),
 	# Author(s)
 	addon_author="cary-rowen <manchen_0528@outlook.com>",
 	# URL for the add-on documentation support
