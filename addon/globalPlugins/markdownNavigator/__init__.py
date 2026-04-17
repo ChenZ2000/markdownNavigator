@@ -3,9 +3,10 @@
 # Copyright (C) 2026 Cary-rowen <manchen_0528@outlook.com>
 # This file is covered by the GNU General Public License.
 
-import globalPluginHandler
 import controlTypes
+import globalPluginHandler
 import winUser
+from logHandler import log
 
 from .navigator import MarkdownEditorOverlay
 
@@ -21,16 +22,54 @@ _SUPPORTED_EDITOR_WINDOW_CLASSES = frozenset(
 def _shouldApplyMarkdownOverlay(obj) -> bool:
 	"""Return whether Markdown navigation should be added to the control."""
 	windowClassName = getattr(obj, "windowClassName", "")
-	windowStyle = getattr(obj, "windowStyle", 0)
-	states = getattr(obj, "states", set())
-	role = getattr(obj, "role", None)
-	if role == controlTypes.Role.PASSWORDEDIT or controlTypes.State.PROTECTED in states:
-		return False
 	if windowClassName in _SUPPORTED_EDITOR_WINDOW_CLASSES:
+		try:
+			states = obj.states
+		except Exception:
+			log.warning(
+				f"MarkdownNavigator: could not get states while choosing overlay classes "
+				f"for {obj.__class__.__name__} with window class {windowClassName!r}",
+				exc_info=True,
+			)
+			return False
+		if controlTypes.State.PROTECTED in states:
+			return False
+		try:
+			return obj.role != controlTypes.Role.PASSWORDEDIT
+		except Exception:
+			log.warning(
+				f"MarkdownNavigator: could not get role while choosing overlay classes "
+				f"for {obj.__class__.__name__} with window class {windowClassName!r}",
+				exc_info=True,
+			)
+			return False
+	try:
+		role = obj.role
+	except Exception:
+		log.warning(
+			f"MarkdownNavigator: could not get role while choosing overlay classes "
+			f"for {obj.__class__.__name__} with window class {windowClassName!r}",
+			exc_info=True,
+		)
+		return False
+	if role == controlTypes.Role.PASSWORDEDIT:
+		return False
+	if role != controlTypes.Role.EDITABLETEXT:
+		return False
+	try:
+		states = obj.states
+	except Exception:
+		log.warning(
+			f"MarkdownNavigator: could not get states while choosing overlay classes "
+			f"for {obj.__class__.__name__} with window class {windowClassName!r}",
+			exc_info=True,
+		)
+		return False
+	if controlTypes.State.PROTECTED in states:
+		return False
+	if getattr(obj, "windowStyle", 0) & winUser.ES_MULTILINE:
 		return True
-	return role == controlTypes.Role.EDITABLETEXT and (
-		bool(windowStyle & winUser.ES_MULTILINE) or controlTypes.State.MULTILINE in states
-	)
+	return controlTypes.State.MULTILINE in states
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
