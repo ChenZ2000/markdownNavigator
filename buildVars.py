@@ -23,11 +23,11 @@ addon_info = AddonInfo(
 	# Translators: Long description to be shown for this add-on on add-on information from add-on store
 	addon_description=_("""An NVDA add-on that provides structured navigation (headings, lists, tables, etc.) in editable text areas for Markdown files."""),
 	# version
-	addon_version="0.2.3",
+	addon_version="0.2.4",
 	# Brief changelog for this version
 	# Translators: what's new content for the add-on version to be shown in the add-on store
-	addon_changelog=_("""### 0.2.3
-Fix bug in Microsoft PowerPoint."""),
+	addon_changelog=_("""### 0.2.4
+Compatible with NVDA 2026.1."""),
 	# Author(s)
 	addon_author="cary-rowen <manchen_0528@outlook.com>",
 	# URL for the add-on documentation support
@@ -39,7 +39,7 @@ Fix bug in Microsoft PowerPoint."""),
 	# Minimum NVDA version supported (e.g. "2019.3.0", minor version is optional)
 	addon_minimumNVDAVersion="2025.1.0",
 	# Last NVDA version supported/tested (e.g. "2024.4.0", ideally more recent than minimum version)
-	addon_lastTestedNVDAVersion="2025.3.2",
+	addon_lastTestedNVDAVersion="2026.1.0",
 	# Add-on update channel (default is None, denoting stable releases,
 	# and for development releases, use "dev".)
 	# Do not change unless you know what you are doing!
