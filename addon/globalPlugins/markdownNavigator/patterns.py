@@ -23,7 +23,33 @@ RE_ITALIC = re.compile(r"(?<!\*)\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?!\*)|(?<!_)_(?=[
 RE_STRIKETHROUGH = re.compile(r"(~~)(?=\S)(.+?)(?<=\S)\1")
 RE_FOOTNOTE = re.compile(r"\[\^.+?\](:)?")
 RE_LATEX_MATH = re.compile(r"\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)")
+RE_TABLE_CELL_SEPARATOR = re.compile(r"(?<!\\)\|")
 
 
 def getHeadingRegex(level):
 	return re.compile(r"^\s*#{%d}\s" % level)
+
+
+def parseTableRow(text):
+	"""Parse a Markdown table row into cell offset dictionaries."""
+	cells = []
+	matches = list(RE_TABLE_CELL_SEPARATOR.finditer(text))
+	if not matches:
+		return []
+	for i in range(len(matches) - 1):
+		start_pipe = matches[i]
+		end_pipe = matches[i + 1]
+		cell_start = start_pipe.end()
+		cell_end = end_pipe.start()
+		cell_text = text[cell_start:cell_end]
+		stripped = cell_text.strip()
+		content_start = cell_start + cell_text.find(stripped) if stripped else cell_start
+		cells.append(
+			{
+				"start": cell_start,
+				"end": cell_end,
+				"content_start": content_start,
+				"text": stripped,
+			},
+		)
+	return cells

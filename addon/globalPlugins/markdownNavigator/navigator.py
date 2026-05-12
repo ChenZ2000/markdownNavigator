@@ -415,7 +415,6 @@ class MarkdownEditorOverlay(ScriptableObject):
 			log.debug("MarkdownNavigator: Skipping logic active.")
 			# Simple skip logic: Keep searching until the next RE_CODE_BLOCK is found.
 			# Note: This assumes it's paired.
-			pass  # Loop below handles it
 
 		while fdm.move(direction) != 0:
 			text = fdm.getText()
@@ -434,13 +433,12 @@ class MarkdownEditorOverlay(ScriptableObject):
 							prevText = fdm.getText(scanLine)
 							if patterns.RE_CODE_BLOCK.match(prevText) and len(prevText.strip()) > 3:
 								# Found start
-								fdm.updateCaret(scanLine)  # Move fdm there
+								fdm.lineIndex = scanLine
 								found = True
 								break
-						if found:
-							break
 						# If not found start, maybe just stop at this end tag?
-						found = True
+						if not found:
+							found = True
 				else:  # Next
 					found = True
 
@@ -488,39 +486,6 @@ class MarkdownEditorOverlay(ScriptableObject):
 			)
 			ui.message(msg)
 
-	def _parse_table_row(self, text):
-		"""
-		Parses a Markdown table row.
-		Returns a list of dicts: {'start': int, 'end': int, 'content_start': int, 'content_end': int, 'text': str}
-		Indices are relative to the start of the line.
-		"""
-		cells = []
-		# Split by pipe, but keep the delimiter to calculate offsets
-		# Regex looks for | not preceded by \
-		pattern = re.compile(r"(?<!\\)\|")
-		matches = list(pattern.finditer(text))
-		if not matches:
-			return []
-		for i in range(len(matches) - 1):
-			start_pipe = matches[i]
-			end_pipe = matches[i + 1]
-			cell_start = start_pipe.end()
-			cell_end = end_pipe.start()
-			cell_text = text[cell_start:cell_end]
-			stripped = cell_text.strip()
-			content_start = cell_start + cell_text.find(stripped) if stripped else cell_start
-			content_end = content_start + len(stripped)
-			cells.append(
-				{
-					"start": cell_start,
-					"end": cell_end,
-					"content_start": content_start,
-					"content_end": content_end,
-					"text": stripped,
-				},
-			)
-		return cells
-
 	def _navigateTable(self, gesture, row_dir, col_dir):
 		if not getattr(self, "markdownBrowseMode", False):
 			gesture.send()
@@ -546,7 +511,7 @@ class MarkdownEditorOverlay(ScriptableObject):
 
 		# 1. Parse current row (Logical Line)
 		# FastDocumentManager returns the full logical line, ignoring soft wraps.
-		cells = self._parse_table_row(currentLineText)
+		cells = patterns.parseTableRow(currentLineText)
 		if not cells:
 			ui.message(_("Not inside a table"))
 			return
@@ -586,7 +551,7 @@ class MarkdownEditorOverlay(ScriptableObject):
 				if not patterns.RE_TABLE.match(text):
 					break
 
-				new_cells = self._parse_table_row(text)
+				new_cells = patterns.parseTableRow(text)
 				if not new_cells:
 					break
 

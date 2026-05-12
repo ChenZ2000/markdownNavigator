@@ -366,36 +366,6 @@ def navigate_code_legacy(
 		ui.message(msg)
 
 
-def _parse_table_row(text: str) -> list[dict]:
-	"""Parses a Markdown table row into a list of cell dictionaries."""
-	cells = []
-	# Split by pipe, but keep the delimiter to calculate offsets
-	# Regex looks for | not preceded by \
-	pattern = re.compile(r"(?<!\\)\|")
-	matches = list(pattern.finditer(text))
-	if not matches:
-		return []
-	for i in range(len(matches) - 1):
-		start_pipe = matches[i]
-		end_pipe = matches[i + 1]
-		cell_start = start_pipe.end()
-		cell_end = end_pipe.start()
-		cell_text = text[cell_start:cell_end]
-		stripped = cell_text.strip()
-		content_start = cell_start + cell_text.find(stripped) if stripped else cell_start
-		content_end = content_start + len(stripped)
-		cells.append(
-			{
-				"start": cell_start,
-				"end": cell_end,
-				"content_start": content_start,
-				"content_end": content_end,
-				"text": stripped,
-			},
-		)
-	return cells
-
-
 def navigate_table_legacy(
 	obj: NVDAObject,
 	gesture,
@@ -422,7 +392,7 @@ def navigate_table_legacy(
 		return
 
 	# 1. Parse current row
-	cells = _parse_table_row(tiLine.text)
+	cells = patterns.parseTableRow(tiLine.text)
 	if not cells:
 		gesture.send()
 		return
@@ -496,7 +466,7 @@ def navigate_table_legacy(
 		if not patterns.RE_TABLE.match(tiScan.text):
 			ui.message(_("Edge of table"))
 			return
-		new_cells = _parse_table_row(tiScan.text)
+		new_cells = patterns.parseTableRow(tiScan.text)
 		if not new_cells:
 			ui.message(_("Edge of table"))
 			return

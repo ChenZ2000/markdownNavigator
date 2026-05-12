@@ -25,16 +25,8 @@ from NVDAObjects.IAccessible import IA2TextTextInfo
 if TYPE_CHECKING:
 	from NVDAObjects import NVDAObject
 
-#: Regex pattern for splitting text into lines.
+#: Regex pattern for locating line boundaries.
 NEWLINE_REGEX = re.compile(r"\r?\n|\r")
-
-
-def _splitLines(text: str) -> list[int]:
-	"""Split text into lines using regex and return a list of start offsets for each line."""
-	offsets = [0]
-	for m in NEWLINE_REGEX.finditer(text):
-		offsets.append(m.end())
-	return offsets
 
 
 def _getParagraphUnit(textInfo: textInfos.TextInfo) -> str:
@@ -204,8 +196,6 @@ class FastDocumentManager:
 			isWeb = appName in ("chrome", "msedge", "firefox", "opera", "brave", "browser")
 
 			if isWeb:
-				self.pyOffsets[lineIndex] if lineIndex < self.nLines else len(self.documentText)
-
 				# Optimization V3: Use flattened IA2TextTextInfo with manual offset injection
 				# This bypasses the Compound structure and maps directly to global UTF-16 offsets
 				try:
