@@ -83,7 +83,6 @@ class MarkdownEditorOverlay(ScriptableObject):
 		"""Core navigation logic.
 
 		Uses FastDocumentManager for batch text processing to reduce IPC calls.
-		Falls back to legacy navigation if FastDocumentManager fails.
 
 		:param gesture: The gesture that triggered navigation.
 		:param regex: Compiled regex pattern to match.
@@ -95,14 +94,8 @@ class MarkdownEditorOverlay(ScriptableObject):
 		if not getattr(self, "markdownBrowseMode", False):
 			gesture.send()
 			return
-		try:
-			with FastDocumentManager(self) as fdm:
-				self._navigateFast(fdm, regex, direction, name, focus_element, notFoundMessage)
-		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
-			log.debugWarning(f"MarkdownNavigator: FastDocumentManager failed ({e}), falling back to legacy")
-			from .legacy import navigate_legacy
-
-			navigate_legacy(self, gesture, regex, direction, name, focus_element, notFoundMessage)
+		with FastDocumentManager(self) as fdm:
+			self._navigateFast(fdm, regex, direction, name, focus_element, notFoundMessage)
 
 	def _moveToCharacterRange(
 		self,
@@ -238,14 +231,8 @@ class MarkdownEditorOverlay(ScriptableObject):
 		if not getattr(self, "markdownBrowseMode", False):
 			gesture.send()
 			return
-		try:
-			with FastDocumentManager(self) as fdm:
-				self._navigateBlockFast(fdm, regex, direction, name, notFoundMessage)
-		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
-			log.debugWarning(f"MarkdownNavigator: FastDocumentManager failed for block nav ({e})")
-			from .legacy import navigate_block_legacy
-
-			navigate_block_legacy(self, gesture, regex, direction, name, notFoundMessage)
+		with FastDocumentManager(self) as fdm:
+			self._navigateBlockFast(fdm, regex, direction, name, notFoundMessage)
 
 	def _navigateBlockFast(
 		self,
@@ -308,16 +295,8 @@ class MarkdownEditorOverlay(ScriptableObject):
 		if not getattr(self, "markdownBrowseMode", False):
 			gesture.send()
 			return
-		try:
-			with FastDocumentManager(self) as fdm:
-				self._navigateCodeFast(fdm, direction, name, notFoundMessage)
-		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
-			log.debugWarning(
-				f"MarkdownNavigator: FastDocumentManager failed for code nav ({e}), falling back",
-			)
-			from .legacy import navigate_code_legacy
-
-			navigate_code_legacy(self, gesture, direction, name, notFoundMessage)
+		with FastDocumentManager(self) as fdm:
+			self._navigateCodeFast(fdm, direction, name, notFoundMessage)
 
 	def _navigateCodeFast(self, fdm, direction, name, notFoundMessage):
 		"""Implementing Code Block Navigation with FastDocumentManager"""
@@ -451,16 +430,8 @@ class MarkdownEditorOverlay(ScriptableObject):
 		if not getattr(self, "markdownBrowseMode", False):
 			gesture.send()
 			return
-		try:
-			with FastDocumentManager(self) as fdm:
-				self._navigateTableFast(fdm, row_dir, col_dir)
-		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
-			log.debugWarning(
-				f"MarkdownNavigator: FastDocumentManager failed for table nav ({e}), falling back to legacy",
-			)
-			from .legacy import navigate_table_legacy
-
-			navigate_table_legacy(self, gesture, row_dir, col_dir)
+		with FastDocumentManager(self) as fdm:
+			self._navigateTableFast(fdm, row_dir, col_dir)
 
 	def _navigateTableFast(self, fdm, row_dir, col_dir):
 		isWeb = getattr(self.appModule, "appName", "").lower() in ("chrome", "msedge")
