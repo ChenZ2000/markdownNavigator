@@ -4,8 +4,6 @@
 # This file is covered by the GNU General Public License.
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
-
 import addonHandler
 import controlTypes
 import textInfos
@@ -27,9 +25,6 @@ from NVDAObjects.IAccessible import IA2TextTextInfo
 from .document import FastDocumentManager
 
 addonHandler.initTranslation()
-
-if TYPE_CHECKING:
-	pass
 
 
 class MarkdownEditorOverlay(ScriptableObject):
@@ -607,7 +602,7 @@ class MarkdownEditorOverlay(ScriptableObject):
 	def script_tableRowDown(self, gesture):
 		self._navigateTable(gesture, 1, 0)
 
-	def _find_block_boundary(self, direction, name_start, name_end):
+	def _find_block_boundary(self, direction):
 		if not getattr(self, "markdownBrowseMode", False):
 			return False
 
@@ -648,12 +643,12 @@ class MarkdownEditorOverlay(ScriptableObject):
 
 	@script(gesture="kb:,")
 	def script_endOfElement(self, gesture):
-		if not self._find_block_boundary(1, _("start"), _("end")):
+		if not self._find_block_boundary(1):
 			gesture.send()
 
 	@script(gesture="kb:shift+,")
 	def script_startOfElement(self, gesture):
-		if not self._find_block_boundary(-1, _("start"), _("end")):
+		if not self._find_block_boundary(-1):
 			gesture.send()
 
 	# Tables (Explicitly using _navigateBlock)
