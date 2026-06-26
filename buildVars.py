@@ -23,12 +23,16 @@ addon_info = AddonInfo(
 	# Translators: Long description to be shown for this add-on on add-on information from add-on store
 	addon_description=_("""An NVDA add-on that provides structured navigation (headings, lists, tables, etc.) in editable text areas for Markdown files."""),
 	# version
-	addon_version="0.2.6",
+	addon_version="0.2.7",
 	# Brief changelog for this version
 	# Translators: what's new content for the add-on version to be shown in the add-on store
-addon_changelog=_("""### 0.2.6
+addon_changelog=_("""### 0.2.7
 
-- Bug fixes."""),
+- Simplified Markdown navigation internals to reduce duplicated code.
+- Improved caret positioning consistency in Chrome and Edge web editors.
+- Removed the old legacy navigation fallback now that the fast navigation path is the main implementation.
+
+Note: If a text editor does not support the fast navigation path, Markdown navigation may no longer fall back to the older slower method."""),
 	# Author(s)
 	addon_author="cary-rowen <manchen_0528@outlook.com>",
 	# URL for the add-on documentation support
