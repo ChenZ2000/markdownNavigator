@@ -104,6 +104,34 @@ class MarkdownEditorOverlay(ScriptableObject):
 
 			navigate_legacy(self, gesture, regex, direction, name, focus_element, notFoundMessage)
 
+	def _moveToCharacterRange(
+		self,
+		textInfo: textInfos.TextInfo,
+		text: str,
+		charOffset: int,
+		isWeb: bool,
+		charLength: int = 0,
+	) -> None:
+		"""Move the caret to a Python character offset, using IA2 UTF-16 offsets for web editors."""
+		from textUtils import WideStringOffsetConverter
+
+		if isWeb and isinstance(textInfo, IA2TextTextInfo):
+			targetUtf16Offset = WideStringOffsetConverter(text[:charOffset]).encodedStringLength
+			textInfo = textInfo.copy()
+			textInfo._startOffset += targetUtf16Offset
+			textInfo._endOffset = textInfo._startOffset
+			if charLength:
+				targetUtf16Length = WideStringOffsetConverter(
+					text[charOffset : charOffset + charLength],
+				).encodedStringLength
+				textInfo._endOffset += targetUtf16Length
+			textInfo.updateCaret()
+			return
+
+		textInfo.collapse()
+		textInfo.move(textInfos.UNIT_CHARACTER, charOffset)
+		textInfo.updateCaret()
+
 	def _navigateFast(
 		self,
 		fdm: FastDocumentManager,
@@ -113,8 +141,6 @@ class MarkdownEditorOverlay(ScriptableObject):
 		focus_element: bool,
 		notFoundMessage: str | None,
 	) -> None:
-		from textUtils import WideStringOffsetConverter
-
 		if focus_element:
 			currentLineText = fdm.getText()
 			lineStartOffset = fdm.getLineOffset()
@@ -146,31 +172,15 @@ class MarkdownEditorOverlay(ScriptableObject):
 
 			if target_match:
 				lineInfo = fdm.getTextInfo()
-
-				if isWeb and isinstance(lineInfo, IA2TextTextInfo):
-					# Web Optimization: Calculate Global UTF-16 Offset and Inject
-					prefix = currentLineText[: target_match.start()]
-					converter = WideStringOffsetConverter(prefix)
-					utf16_delta = converter.encodedStringLength
-
-					new_abs = lineInfo._startOffset + utf16_delta
-					match_len_utf16 = WideStringOffsetConverter(target_match.group()).encodedStringLength
-
-					lineInfo._startOffset = new_abs
-					lineInfo._endOffset = new_abs + match_len_utf16
-
-					# Update caret
-					lineInfo.updateCaret()
-					# Speak content
-					speech.speak([target_match.group()])
-					return
-				else:
-					# Fallback / Desktop
-					lineInfo.collapse()
-					lineInfo.move(textInfos.UNIT_CHARACTER, target_match.start())
-					lineInfo.updateCaret()
-					speech.speak([target_match.group()])
-					return
+				self._moveToCharacterRange(
+					lineInfo,
+					currentLineText,
+					target_match.start(),
+					isWeb,
+					len(target_match.group()),
+				)
+				speech.speak([target_match.group()])
+				return
 
 			found = False
 			while fdm.move(direction) != 0:
@@ -180,29 +190,9 @@ class MarkdownEditorOverlay(ScriptableObject):
 					found = True
 					m = matches[0] if direction == 1 else matches[-1]
 					lineInfo = fdm.getTextInfo()
-
-					if isWeb and isinstance(lineInfo, IA2TextTextInfo):
-						# Web Optimization: Offset Injection
-						prefix = text[: m.start()]
-						converter = WideStringOffsetConverter(prefix)
-						utf16_delta = converter.encodedStringLength
-
-						new_abs = lineInfo._startOffset + utf16_delta
-						match_len_utf16 = WideStringOffsetConverter(m.group()).encodedStringLength
-
-						lineInfo._startOffset = new_abs
-						lineInfo._endOffset = new_abs + match_len_utf16
-
-						lineInfo.updateCaret()
-						speech.speak([m.group()])
-						break
-					else:
-						# Fallback / Desktop
-						lineInfo.collapse()
-						lineInfo.move(textInfos.UNIT_CHARACTER, m.start())
-						lineInfo.updateCaret()
-						speech.speak([m.group()])
-						break
+					self._moveToCharacterRange(lineInfo, text, m.start(), isWeb, len(m.group()))
+					speech.speak([m.group()])
+					break
 
 			if not found:
 				msg = (
@@ -331,8 +321,6 @@ class MarkdownEditorOverlay(ScriptableObject):
 
 	def _navigateCodeFast(self, fdm, direction, name, notFoundMessage):
 		"""Implementing Code Block Navigation with FastDocumentManager"""
-		from textUtils import WideStringOffsetConverter
-
 		isWeb = getattr(self.appModule, "appName", "").lower() in ("chrome", "msedge")
 
 		currentLineText = fdm.getText()
@@ -384,24 +372,15 @@ class MarkdownEditorOverlay(ScriptableObject):
 			if target_match:
 				log.debug(f"MarkdownNavigator: Found Inline Code in current line at {target_match.start()}")
 				lineInfo = fdm.getTextInfo()
-
-				if isWeb and isinstance(lineInfo, IA2TextTextInfo):
-					prefix = currentLineText[: target_match.start()]
-					converter = WideStringOffsetConverter(prefix)
-					utf16_delta = converter.encodedStringLength
-					new_abs = lineInfo._startOffset + utf16_delta
-					match_len_utf16 = WideStringOffsetConverter(target_match.group()).encodedStringLength
-					lineInfo._startOffset = new_abs
-					lineInfo._endOffset = new_abs + match_len_utf16
-					lineInfo.updateCaret()
-					speech.speak([target_match.group()])
-					return
-				else:
-					lineInfo.collapse()
-					lineInfo.move(textInfos.UNIT_CHARACTER, target_match.start())
-					lineInfo.updateCaret()
-					speech.speak([target_match.group()])
-					return
+				self._moveToCharacterRange(
+					lineInfo,
+					currentLineText,
+					target_match.start(),
+					isWeb,
+					len(target_match.group()),
+				)
+				speech.speak([target_match.group()])
+				return
 
 		found = False
 
@@ -456,21 +435,8 @@ class MarkdownEditorOverlay(ScriptableObject):
 					log.debug(f"MarkdownNavigator: Found Inline Code at {m.start()}")
 
 					lineInfo = fdm.getTextInfo()
-					if isWeb and isinstance(lineInfo, IA2TextTextInfo):
-						prefix = text[: m.start()]
-						converter = WideStringOffsetConverter(prefix)
-						utf16_delta = converter.encodedStringLength
-						new_abs = lineInfo._startOffset + utf16_delta
-						match_len_utf16 = WideStringOffsetConverter(m.group()).encodedStringLength
-						lineInfo._startOffset = new_abs
-						lineInfo._endOffset = new_abs + match_len_utf16
-						lineInfo.updateCaret()
-						speech.speak([m.group()])
-					else:
-						lineInfo.collapse()
-						lineInfo.move(textInfos.UNIT_CHARACTER, m.start())
-						lineInfo.updateCaret()
-						speech.speak([m.group()])
+					self._moveToCharacterRange(lineInfo, text, m.start(), isWeb, len(m.group()))
+					speech.speak([m.group()])
 					break
 
 		if not found:
@@ -561,29 +527,10 @@ class MarkdownEditorOverlay(ScriptableObject):
 			return
 
 	def _moveToTableCell(self, fdm, target_cell, isWeb):
-		from textUtils import WideStringOffsetConverter
-
 		target_char_offset = target_cell["content_start"]
 		tiLine = fdm.getTextInfo()
 
-		if isWeb and isinstance(tiLine, IA2TextTextInfo):
-			# Convert to UTF-16 offset
-			# tiLine._startOffset is Global UTF-16 Start of Line
-			text = fdm.getText()
-			prefix = text[:target_char_offset]
-			converter = WideStringOffsetConverter(prefix)
-			target_utf16_offset = converter.encodedStringLength
-
-			new_abs = tiLine._startOffset + target_utf16_offset
-			tiNew = tiLine.copy()
-			tiNew._startOffset = new_abs
-			tiNew._endOffset = new_abs
-			tiNew.updateCaret()
-		else:
-			tiLine.collapse()
-			tiLine.move(textInfos.UNIT_CHARACTER, target_char_offset)
-			tiLine.updateCaret()
-
+		self._moveToCharacterRange(tiLine, fdm.getText(), target_char_offset, isWeb)
 		speech.speak([target_cell["text"]])
 
 	@script(gesture="kb:control+alt+leftArrow")
