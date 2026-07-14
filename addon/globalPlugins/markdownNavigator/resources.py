@@ -170,7 +170,10 @@ def resolveDestination(destination: str, documentLocation: str | None = None) ->
 	scheme = parsed.scheme.casefold()
 	if scheme in _WEB_SCHEMES:
 		return ResolvedDestination(
-			DestinationAction.WEB, destination, fragment=parsed.fragment, scheme=scheme
+			DestinationAction.WEB,
+			destination,
+			fragment=parsed.fragment,
+			scheme=scheme,
 		)
 	if scheme in _SHELL_SCHEMES:
 		return ResolvedDestination(DestinationAction.SHELL, destination, scheme=scheme)

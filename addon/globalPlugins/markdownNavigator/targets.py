@@ -415,7 +415,7 @@ class MarkdownDocumentIndex:
 				end = self.lineStarts[lineIndex] + referenceMatch.start(2) + destinationEnd
 			else:
 				leadingWhitespace = len(self._lineContent(self.lines[destinationLineIndex])) - len(
-					destinationText
+					destinationText,
 				)
 				end = self.lineStarts[destinationLineIndex] + leadingWhitespace + destinationEnd
 				self._referenceDefinitionLines.add(destinationLineIndex)
