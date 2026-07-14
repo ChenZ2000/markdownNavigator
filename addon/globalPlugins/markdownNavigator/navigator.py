@@ -17,9 +17,10 @@ import nvwave
 import globalVars
 from scriptHandler import script
 import speech
+import winUser
 from logHandler import log
 from baseObject import ScriptableObject
-from . import patterns
+from . import patterns, resources, targets
 from _ctypes import COMError
 from NVDAObjects.IAccessible import IA2TextTextInfo
 
@@ -32,6 +33,9 @@ class MarkdownEditorOverlay(ScriptableObject):
 	"""Overlay class to add Markdown navigation capabilities to EditableText objects."""
 
 	markdownBrowseMode: bool = False
+	_footnoteReturn: tuple[str, int] | None = None
+	_targetIndexCacheText: str | None = None
+	_targetIndexCache: targets.MarkdownDocumentIndex | None = None
 
 	@script(
 		# Translators: Description for the toggle script.
@@ -40,6 +44,9 @@ class MarkdownEditorOverlay(ScriptableObject):
 	)
 	def script_toggleMarkdownBrowseMode(self, gesture) -> None:
 		self.markdownBrowseMode = not self.markdownBrowseMode
+		if not self.markdownBrowseMode:
+			self._targetIndexCacheText = None
+			self._targetIndexCache = None
 		self._reportBrowseModeState()
 
 	def _reportBrowseModeState(self) -> None:
@@ -72,40 +79,272 @@ class MarkdownEditorOverlay(ScriptableObject):
 	def script_trapNonCommandGesture(self, gesture) -> None:
 		winsound.MessageBeep()
 
-	def _activateLinkAtCaret(self) -> bool:
-		"""Open the Markdown link at the caret, if any."""
+	def _getTargetIndex(self, documentText: str) -> targets.MarkdownDocumentIndex:
+		if self._targetIndexCache is not None and self._targetIndexCacheText == documentText:
+			return self._targetIndexCache
+		documentIndex = targets.MarkdownDocumentIndex(documentText)
+		self._targetIndexCacheText = documentText
+		self._targetIndexCache = documentIndex
+		return documentIndex
+
+	def _getDocumentLocation(self) -> str | None:
+		"""Best-effort discovery of an explicit document path or URL."""
+		candidates: list[str] = []
+		objects = [self, getattr(self, "appModule", None)]
+		for obj in objects:
+			if obj is None:
+				continue
+			for attribute in (
+				"documentPath",
+				"filePath",
+				"fileName",
+				"filename",
+				"documentURL",
+				"url",
+			):
+				try:
+					value = getattr(obj, attribute, None)
+				except Exception:
+					continue
+				if isinstance(value, str):
+					candidates.append(value)
+
+		try:
+			attributes = getattr(self, "IA2Attributes", None)
+		except Exception:
+			attributes = None
+		if isinstance(attributes, dict):
+			for key in ("url", "document-url", "current-uri", "file-path"):
+				value = attributes.get(key)
+				if isinstance(value, str):
+					candidates.append(value)
+
+		current: object | None = self
+		seenObjects: set[int] = set()
+		for _index in range(12):
+			if current is None or id(current) in seenObjects:
+				break
+			seenObjects.add(id(current))
+			for attribute in ("name", "windowText"):
+				try:
+					value = getattr(current, attribute, None)
+				except Exception:
+					continue
+				if isinstance(value, str):
+					candidates.append(value)
+			try:
+				current = getattr(current, "parent", None)
+			except Exception:
+				break
+
+		try:
+			windowHandle = getattr(self, "windowHandle", 0)
+			if windowHandle:
+				candidates.append(winUser.getWindowText(windowHandle))
+				rootHandle = winUser.getAncestor(windowHandle, winUser.GA_ROOT)
+				if rootHandle and rootHandle != windowHandle:
+					candidates.append(winUser.getWindowText(rootHandle))
+		except Exception:
+			log.debugWarning("MarkdownNavigator: Could not inspect the editor window title")
+
+		return resources.findDocumentLocation(candidates)
+
+	def _moveToIndexedTarget(
+		self,
+		fdm: FastDocumentManager,
+		target: targets.MarkdownTarget,
+	) -> None:
+		lineText = fdm.getText(target.lineIndex)
+		lineOffset = fdm.getLineOffset(target.lineIndex)
+		isWeb = getattr(self.appModule, "appName", "").lower() in ("chrome", "msedge")
+		lineInfo = fdm.getTextInfo(target.lineIndex)
+		self._moveToCharacterRange(
+			lineInfo,
+			lineText,
+			target.start - lineOffset,
+			isWeb,
+			target.end - target.start,
+		)
+		speech.speak([target.source])
+
+	def _moveToHeading(
+		self,
+		fdm: FastDocumentManager,
+		heading: targets.Heading,
+	) -> None:
+		lineText = fdm.getText(heading.lineIndex)
+		lineOffset = fdm.getLineOffset(heading.lineIndex)
+		isWeb = getattr(self.appModule, "appName", "").lower() in ("chrome", "msedge")
+		lineInfo = fdm.getTextInfo(heading.lineIndex)
+		self._moveToCharacterRange(
+			lineInfo,
+			lineText,
+			heading.start - lineOffset,
+			isWeb,
+		)
+		speech.speak([lineText.rstrip("\r\n")])
+
+	def _activateFootnoteTarget(
+		self,
+		fdm: FastDocumentManager,
+		documentIndex: targets.MarkdownDocumentIndex,
+		target: targets.MarkdownTarget,
+	) -> None:
+		label = target.referenceLabel or target.label
+		if target.kind == targets.TargetKind.FOOTNOTE_REFERENCE:
+			definition = documentIndex.footnoteDefinition(label)
+			if definition is None:
+				ui.message(_("No matching footnote found"))
+				return
+			self._footnoteReturn = (label, target.start)
+			self._moveToIndexedTarget(fdm, definition)
+			return
+
+		references = documentIndex.footnoteReferences(label)
+		if not references:
+			ui.message(_("No matching footnote found"))
+			return
+		returnTarget = references[0]
+		if self._footnoteReturn and self._footnoteReturn[0] == label:
+			storedOffset = self._footnoteReturn[1]
+			returnTarget = min(references, key=lambda reference: abs(reference.start - storedOffset))
+		self._moveToIndexedTarget(fdm, returnTarget)
+
+	def _activateInternalFragment(
+		self,
+		fdm: FastDocumentManager,
+		documentIndex: targets.MarkdownDocumentIndex,
+		fragment: str,
+	) -> None:
+		if not fragment:
+			lineInfo = fdm.updateCaret(0)
+			speech.speakTextInfo(
+				lineInfo,
+				unit=textInfos.UNIT_LINE,
+				reason=controlTypes.OutputReason.CARET,
+			)
+			return
+		heading = documentIndex.findHeading(fragment)
+		if heading is None:
+			ui.message(_("No matching heading found"))
+			return
+		self._moveToHeading(fdm, heading)
+
+	def _openResolvedDestination(self, destination: resources.ResolvedDestination) -> None:
+		if destination.action == resources.DestinationAction.UNRESOLVED_RELATIVE:
+			ui.message(_("Cannot resolve the relative target because the document location is unavailable"))
+			return
+		if destination.action in (
+			resources.DestinationAction.UNSUPPORTED,
+			resources.DestinationAction.EMPTY,
+		):
+			ui.message(_("This target type is not supported"))
+			return
+		if destination.action == resources.DestinationAction.LOCAL_FILE:
+			if resources.isDangerousLocalPath(destination.value):
+				ui.message(_("Opening this file type is blocked for safety"))
+				return
+			if not os.path.exists(destination.value):
+				ui.message(_("Target file not found"))
+				return
+
+		try:
+			if destination.action == resources.DestinationAction.WEB:
+				opened = webbrowser.open(destination.value)
+				if not opened:
+					raise RuntimeError("The default browser did not accept the target")
+			elif destination.action in (
+				resources.DestinationAction.SHELL,
+				resources.DestinationAction.LOCAL_FILE,
+			):
+				os.startfile(destination.value)
+			else:
+				ui.message(_("This target type is not supported"))
+				return
+		except Exception:
+			log.warning("MarkdownNavigator: Could not open target", exc_info=True)
+			ui.message(_("Unable to open target"))
+
+	def _activateMarkdownTargetAtCaret(self) -> bool:
+		"""Activate the Markdown link, image, fragment, or footnote at the caret."""
+		resolvedDestination: resources.ResolvedDestination | None = None
 		try:
 			with FastDocumentManager(self) as fdm:
-				lineText = fdm.getText()
-				caretOffset = fdm.initialCaretOffset - fdm.getLineOffset()
-				destination = patterns.getLinkDestinationAtOffset(lineText, caretOffset)
+				currentLine = fdm.getText().lower()
+				if not any(marker in currentLine for marker in ("[", "!", "<", "@", "http", "www.")):
+					return False
+				documentIndex = self._getTargetIndex(fdm.documentText or "")
+				target = documentIndex.targetAtOffset(fdm.initialCaretOffset)
+				if target is None:
+					return False
+				if target.kind in targets.FOOTNOTE_TARGET_KINDS:
+					self._activateFootnoteTarget(fdm, documentIndex, target)
+					return True
+				if target.destination is None:
+					ui.message(_("This target type is not supported"))
+					return True
+				resolvedDestination = resources.resolveDestination(
+					target.destination,
+					self._getDocumentLocation(),
+				)
+				if resolvedDestination.action == resources.DestinationAction.INTERNAL_FRAGMENT:
+					self._activateInternalFragment(fdm, documentIndex, resolvedDestination.fragment)
+					return True
 		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
-			log.debugWarning(f"MarkdownNavigator: Could not inspect link at caret: {e}")
+			log.debugWarning(f"MarkdownNavigator: Could not inspect target at caret: {e}")
 			return False
 
-		if destination is None:
-			return False
-
-		try:
-			opened = webbrowser.open(destination)
-		except Exception:
-			log.warning("MarkdownNavigator: Could not open link", exc_info=True)
-			ui.message(_("Unable to open link"))
-			return True
-
-		if not opened:
-			log.warning("MarkdownNavigator: The default browser did not accept the link")
-			ui.message(_("Unable to open link"))
+		if resolvedDestination is not None:
+			self._openResolvedDestination(resolvedDestination)
 		return True
 
 	@script(
-		# Translators: Description for the script that opens a Markdown link.
-		description=_("Opens the Markdown link at the caret."),
+		# Translators: Description for the script that activates an interactive Markdown target.
+		description=_("Activates the Markdown link, image, or document target at the caret."),
 		gestures=["kb:enter", "kb:numpadEnter"],
 	)
-	def script_activateLink(self, gesture) -> None:
-		if not getattr(self, "markdownBrowseMode", False) or not self._activateLinkAtCaret():
+	def script_activateMarkdownTarget(self, gesture) -> None:
+		if not getattr(self, "markdownBrowseMode", False) or not self._activateMarkdownTargetAtCaret():
 			gesture.send()
+
+	def _navigateIndexedTarget(
+		self,
+		gesture,
+		direction: int,
+		kinds: frozenset[targets.TargetKind],
+		notFoundMessage: str,
+	) -> None:
+		if not getattr(self, "markdownBrowseMode", False):
+			gesture.send()
+			return
+		try:
+			with FastDocumentManager(self) as fdm:
+				documentIndex = self._getTargetIndex(fdm.documentText or "")
+				availableTargets = documentIndex.targetsOfKinds(kinds)
+				if direction == 1:
+					target = next(
+						(
+							candidate
+							for candidate in availableTargets
+							if candidate.start > fdm.initialCaretOffset
+						),
+						None,
+					)
+				else:
+					target = next(
+						(
+							candidate
+							for candidate in reversed(availableTargets)
+							if candidate.start < fdm.initialCaretOffset
+						),
+						None,
+					)
+				if target is None:
+					ui.message(notFoundMessage)
+					return
+				self._moveToIndexedTarget(fdm, target)
+		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
+			log.error(f"MarkdownNavigator: Could not navigate indexed Markdown targets: {e}")
 
 	def _navigate(
 		self,
@@ -623,46 +862,38 @@ class MarkdownEditorOverlay(ScriptableObject):
 	# Links & Images (Inline)
 	@script(gesture="kb:k")
 	def script_nextLink(self, gesture):
-		self._navigate(
+		self._navigateIndexedTarget(
 			gesture,
-			patterns.RE_LINK,
 			1,
-			_("link"),
-			focus_element=True,
-			notFoundMessage=_("no next link"),
+			targets.LINK_TARGET_KINDS,
+			_("no next link"),
 		)
 
 	@script(gesture="kb:shift+k")
 	def script_prevLink(self, gesture):
-		self._navigate(
+		self._navigateIndexedTarget(
 			gesture,
-			patterns.RE_LINK,
 			-1,
-			_("link"),
-			focus_element=True,
-			notFoundMessage=_("no previous link"),
+			targets.LINK_TARGET_KINDS,
+			_("no previous link"),
 		)
 
 	@script(gesture="kb:g")
 	def script_nextImage(self, gesture):
-		self._navigate(
+		self._navigateIndexedTarget(
 			gesture,
-			patterns.RE_IMAGE,
 			1,
-			_("image"),
-			focus_element=True,
-			notFoundMessage=_("no next graphic"),
+			targets.IMAGE_TARGET_KINDS,
+			_("no next graphic"),
 		)
 
 	@script(gesture="kb:shift+g")
 	def script_prevImage(self, gesture):
-		self._navigate(
+		self._navigateIndexedTarget(
 			gesture,
-			patterns.RE_IMAGE,
 			-1,
-			_("image"),
-			focus_element=True,
-			notFoundMessage=_("no previous graphic"),
+			targets.IMAGE_TARGET_KINDS,
+			_("no previous graphic"),
 		)
 
 	@script(gesture="kb:m")
@@ -798,24 +1029,20 @@ class MarkdownEditorOverlay(ScriptableObject):
 	# Footnotes (F)
 	@script(gesture="kb:f")
 	def script_nextFootnote(self, gesture):
-		self._navigate(
+		self._navigateIndexedTarget(
 			gesture,
-			patterns.RE_FOOTNOTE,
 			1,
-			_("footnote"),
-			focus_element=True,
-			notFoundMessage=_("no next footnote"),
+			targets.FOOTNOTE_TARGET_KINDS,
+			_("no next footnote"),
 		)
 
 	@script(gesture="kb:shift+f")
 	def script_prevFootnote(self, gesture):
-		self._navigate(
+		self._navigateIndexedTarget(
 			gesture,
-			patterns.RE_FOOTNOTE,
 			-1,
-			_("footnote"),
-			focus_element=True,
-			notFoundMessage=_("no previous footnote"),
+			targets.FOOTNOTE_TARGET_KINDS,
+			_("no previous footnote"),
 		)
 
 	@script(gesture="kb:l")

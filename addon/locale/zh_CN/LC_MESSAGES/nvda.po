@@ -74,15 +74,41 @@ msgstr "开启 Markdown 浏览"
 msgid "Markdown Browse Mode Off"
 msgstr "关闭 Markdown 浏览"
 
-#. Translators: Description for the script that opens a Markdown link.
-#: addon\globalPlugins\markdownNavigator\navigator.py:106
-msgid "Opens the Markdown link at the caret."
-msgstr "打开光标所在的 Markdown 链接。"
+#. Translators: Description for the script that activates an interactive Markdown target.
+#: addon\globalPlugins\markdownNavigator\navigator.py:303
+msgid "Activates the Markdown link, image, or document target at the caret."
+msgstr "激活光标所在的 Markdown 链接、图片或文档内目标。"
 
-#: addon\globalPlugins\markdownNavigator\navigator.py:91
-#: addon\globalPlugins\markdownNavigator\navigator.py:96
-msgid "Unable to open link"
-msgstr "无法打开链接"
+#: addon\globalPlugins\markdownNavigator\navigator.py:197
+#: addon\globalPlugins\markdownNavigator\navigator.py:205
+msgid "No matching footnote found"
+msgstr "未找到匹配的脚注"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:229
+msgid "No matching heading found"
+msgstr "未找到匹配的标题"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:235
+msgid "Cannot resolve the relative target because the document location is unavailable"
+msgstr "无法解析相对目标，因为无法获取文档位置"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:241
+#: addon\globalPlugins\markdownNavigator\navigator.py:262
+#: addon\globalPlugins\markdownNavigator\navigator.py:284
+msgid "This target type is not supported"
+msgstr "不支持此目标类型"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:245
+msgid "Opening this file type is blocked for safety"
+msgstr "为确保安全，已阻止打开此文件类型"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:248
+msgid "Target file not found"
+msgstr "未找到目标文件"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:266
+msgid "Unable to open target"
+msgstr "无法打开目标"
 
 #: addon\globalPlugins\markdownNavigator\navigator.py:544
 #: addon\globalPlugins\markdownNavigator\navigator.py:551

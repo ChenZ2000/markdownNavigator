@@ -1,3 +1,11 @@
+### Unreleased
+
+- Added Enter and Numpad Enter activation for inline, reference-style, and automatic links and images.
+- Added safe dispatch for web, email, phone, absolute local, `file://`, and reliably resolved relative targets.
+- Added in-document navigation for heading fragments and round-trip footnote navigation.
+- Added a unified target index used by K, G, F, and Enter, with fenced-code and inline-code exclusion.
+- Added automated parser, resolver, safety, and simulated NVDA behavior tests.
+
 ### 0.2.7
 
 - Simplified Markdown navigation internals to reduce duplicated code.

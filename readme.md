@@ -9,6 +9,7 @@ It enables you to quickly jump to headings, lists, tables, code blocks, and vari
 *   **Efficient Navigation**: Implements fast algorithms that allow for instant jumping even in large documents with tens of thousands of lines.
 *   **Structured Browsing**: Supports navigation by headings, lists, tables, blockquotes, code blocks, and more.
 *   **Inline Elements**: Supports jumping to bold, italic, links, images, and inline code.
+*   **Target Activation**: Opens web, email, image, and local-file targets, and follows headings and footnotes within the document.
 *   **Table Cell Navigation**: Provides shortcuts consistent with NVDA for moving between cells in Markdown tables.
 
 ## Usage
@@ -36,9 +37,9 @@ Once the mode is enabled, you can use the following single-letter keys.
 | **C** | Code | Code block (```` ``` ````) or inline code (`` ` ``) |
 | **S** | Separator | Horizontal rule (`---`, `***`) |
 | **X** | Checkbox | Task list item (`- [ ]`, `- [x]`) |
-| **K** | Link | Markdown link `[text](url)` |
-| **Enter** | Activate Link | Open the Markdown link at the caret in the default browser |
-| **G** | Graphic | Image tag `![alt](url)` |
+| **K** | Link | Inline links, reference links, autolinks, URLs, and email addresses |
+| **Enter** | Activate Target | Open the link or image at the caret, or follow an internal heading or footnote |
+| **G** | Graphic | Inline and reference-style images |
 | **B** | Bold | Bold text (`**` or `__`) |
 | **E** | Emphasis | Italic/Emphasis text (`*` or `_`) |
 | **D** | Delete | Strikethrough text (`~~`) |
@@ -46,6 +47,21 @@ Once the mode is enabled, you can use the following single-letter keys.
 | **,** | End of Block | Jump to the end of the current block element |
 | **Shift+,**| Start of Block | Jump to the start of the current block element |
 | **M** | Math | LaTeX math expression (`$...$` or `$$...$$`) |
+
+### Activating Links, Images, and Document Targets
+
+With Markdown Browse Mode enabled, press **Enter** or **Numpad Enter** on a supported target:
+
+*   Inline and reference-style links and images are supported, including `[text](url)`, `[text][id]`, `![alt](image)`, and `![alt][id]`.
+*   Angle-bracket autolinks, GFM-style bare `http://`, `https://`, and `www.` URLs, and email addresses are supported.
+*   `http`, `https`, and `ftp` targets open in the default browser. `mailto` and `tel` targets use the system's registered handler.
+*   Absolute local paths and `file://` targets open with the Windows default associated application.
+*   Relative paths are resolved from the current Markdown file when its location is reliably available. The add-on reports that the path cannot be resolved rather than guessing when the editor does not expose a document location.
+*   Links beginning with `#` move to the matching ATX or Setext heading. GitHub-style heading fragments, Unicode headings, and duplicate heading suffixes such as `-1` are supported.
+*   Enter on a footnote reference moves to its definition. Enter on the definition returns to the originating reference, or to the first matching reference when no return position is stored.
+*   In a linked image such as `[![alt](image.png)](target)`, navigating with **K** and pressing Enter opens the outer link; navigating with **G** and pressing Enter opens the image source.
+
+For safety, executable and script file types are not launched, and unsupported schemes such as `javascript:` and `data:` are rejected.
 
 ### Table Cell Navigation
 

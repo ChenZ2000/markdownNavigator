@@ -70,15 +70,41 @@ msgstr "Режим обзора markdown включён"
 msgid "Markdown Browse Mode Off"
 msgstr "Режим обзора markdown выключен"
 
-#. Translators: Description for the script that opens a Markdown link.
-#: addon\globalPlugins\markdownNavigator\navigator.py:106
-msgid "Opens the Markdown link at the caret."
-msgstr "Открывает ссылку Markdown под курсором."
+#. Translators: Description for the script that activates an interactive Markdown target.
+#: addon\globalPlugins\markdownNavigator\navigator.py:303
+msgid "Activates the Markdown link, image, or document target at the caret."
+msgstr "Активирует ссылку, изображение или цель документа под курсором."
 
-#: addon\globalPlugins\markdownNavigator\navigator.py:91
-#: addon\globalPlugins\markdownNavigator\navigator.py:96
-msgid "Unable to open link"
-msgstr "Не удалось открыть ссылку"
+#: addon\globalPlugins\markdownNavigator\navigator.py:197
+#: addon\globalPlugins\markdownNavigator\navigator.py:205
+msgid "No matching footnote found"
+msgstr "Соответствующая сноска не найдена"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:229
+msgid "No matching heading found"
+msgstr "Соответствующий заголовок не найден"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:235
+msgid "Cannot resolve the relative target because the document location is unavailable"
+msgstr "Не удаётся разрешить относительную цель, поскольку расположение документа недоступно"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:241
+#: addon\globalPlugins\markdownNavigator\navigator.py:262
+#: addon\globalPlugins\markdownNavigator\navigator.py:284
+msgid "This target type is not supported"
+msgstr "Этот тип цели не поддерживается"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:245
+msgid "Opening this file type is blocked for safety"
+msgstr "Открытие этого типа файлов заблокировано в целях безопасности"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:248
+msgid "Target file not found"
+msgstr "Целевой файл не найден"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:266
+msgid "Unable to open target"
+msgstr "Не удалось открыть цель"
 
 #: addon\globalPlugins\markdownNavigator\navigator.py:544
 #: addon\globalPlugins\markdownNavigator\navigator.py:551
