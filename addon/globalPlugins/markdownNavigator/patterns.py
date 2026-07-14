@@ -3,6 +3,7 @@
 # Copyright (C) 2026 Cary-rowen <manchen_0528@outlook.com>
 # This file is covered by the GNU General Public License.
 
+import html
 import re
 
 # Regex Definitions
@@ -12,9 +13,25 @@ RE_BLOCKQUOTE = re.compile(r"^\s*>\s")
 RE_TABLE = re.compile(r"^\s*\|")
 RE_CODE_BLOCK = re.compile(r"^\s*`{3,}")
 RE_INLINE_CODE = re.compile(r"(?<!`)`[^`\n]+`(?!`)")
-# Non-greedy matching for inline elements
-# Negative lookbehind (?<!!) ensures we don't match images ![...]
-RE_LINK = re.compile(r"(?<!!)\[.+?\]\(.+?\)")
+# Negative lookbehind (?<!!) ensures we don't match images ![...].
+# The destination pattern supports angle brackets, an optional title, escaped
+# characters, and a single level of balanced parentheses (commonly found in URLs).
+RE_LINK = re.compile(
+	r"(?<!!)\[(?:\\[^\r\n]|[^\]\\\r\n])*\]\([ \t]*"
+	r"(?P<destination>"
+	r"<(?:\\[^\r\n]|[^>\\\r\n])+>"
+	r"|"
+	r"(?:\\[^\r\n]|[^()\s\\]|\((?:\\[^\r\n]|[^()\\\r\n])*\))+"
+	r")"
+	r"(?:[ \t]+(?:"
+	r"\"(?:\\[^\r\n]|[^\"\\\r\n])*\""
+	r"|"
+	r"'(?:\\[^\r\n]|[^'\\\r\n])*'"
+	r"|"
+	r"\((?:\\[^\r\n]|[^)\\\r\n])*\)"
+	r"))?"
+	r"[ \t]*\)",
+)
 RE_IMAGE = re.compile(r"!\[.+?\]\(.+?\)")
 RE_SEPARATOR = re.compile(r"^\s*([-*_])\s*\1\s*\1[\-\*_\s]*$")
 RE_CHECKBOX = re.compile(r"^\s*([\*\-\+]|\d+\.)\s*\[[ xX]\]")
@@ -24,6 +41,27 @@ RE_STRIKETHROUGH = re.compile(r"(~~)(?=\S)(.+?)(?<=\S)\1")
 RE_FOOTNOTE = re.compile(r"\[\^.+?\](:)?")
 RE_LATEX_MATH = re.compile(r"\$\$[\s\S]*?\$\$|(?<!\$)\$(?!\$)(.+?)(?<!\$)\$(?!\$)")
 RE_TABLE_CELL_SEPARATOR = re.compile(r"(?<!\\)\|")
+RE_MARKDOWN_BACKSLASH_ESCAPE = re.compile(r"\\([!\"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~])")
+
+
+def getLinkDestinationAtOffset(text: str, offset: int) -> str | None:
+	"""Return the destination of the Markdown link containing ``offset``.
+
+	The offset is a Python character offset relative to ``text``. Markdown
+	backslash escapes and HTML character references in the destination are
+	decoded so the result can be handed directly to the default browser.
+	"""
+	if offset < 0:
+		return None
+
+	for match in RE_LINK.finditer(text):
+		if match.start() <= offset < match.end():
+			destination = match.group("destination").strip()
+			if destination.startswith("<") and destination.endswith(">"):
+				destination = destination[1:-1]
+			destination = RE_MARKDOWN_BACKSLASH_ESCAPE.sub(r"\1", destination)
+			return html.unescape(destination)
+	return None
 
 
 def getHeadingRegex(level):

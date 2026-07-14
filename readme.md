@@ -37,6 +37,7 @@ Once the mode is enabled, you can use the following single-letter keys.
 | **S** | Separator | Horizontal rule (`---`, `***`) |
 | **X** | Checkbox | Task list item (`- [ ]`, `- [x]`) |
 | **K** | Link | Markdown link `[text](url)` |
+| **Enter** | Activate Link | Open the Markdown link at the caret in the default browser |
 | **G** | Graphic | Image tag `![alt](url)` |
 | **B** | Bold | Bold text (`**` or `__`) |
 | **E** | Emphasis | Italic/Emphasis text (`*` or `_`) |

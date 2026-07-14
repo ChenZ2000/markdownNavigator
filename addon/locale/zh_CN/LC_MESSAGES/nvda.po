@@ -74,6 +74,16 @@ msgstr "开启 Markdown 浏览"
 msgid "Markdown Browse Mode Off"
 msgstr "关闭 Markdown 浏览"
 
+#. Translators: Description for the script that opens a Markdown link.
+#: addon\globalPlugins\markdownNavigator\navigator.py:106
+msgid "Opens the Markdown link at the caret."
+msgstr "打开光标所在的 Markdown 链接。"
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:91
+#: addon\globalPlugins\markdownNavigator\navigator.py:96
+msgid "Unable to open link"
+msgstr "无法打开链接"
+
 #: addon\globalPlugins\markdownNavigator\navigator.py:544
 #: addon\globalPlugins\markdownNavigator\navigator.py:551
 msgid "Not inside a table"

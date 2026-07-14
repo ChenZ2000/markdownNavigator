@@ -70,6 +70,16 @@ msgstr "Режим обзора markdown включён"
 msgid "Markdown Browse Mode Off"
 msgstr "Режим обзора markdown выключен"
 
+#. Translators: Description for the script that opens a Markdown link.
+#: addon\globalPlugins\markdownNavigator\navigator.py:106
+msgid "Opens the Markdown link at the caret."
+msgstr "Открывает ссылку Markdown под курсором."
+
+#: addon\globalPlugins\markdownNavigator\navigator.py:91
+#: addon\globalPlugins\markdownNavigator\navigator.py:96
+msgid "Unable to open link"
+msgstr "Не удалось открыть ссылку"
+
 #: addon\globalPlugins\markdownNavigator\navigator.py:544
 #: addon\globalPlugins\markdownNavigator\navigator.py:551
 msgid "Not inside a table"

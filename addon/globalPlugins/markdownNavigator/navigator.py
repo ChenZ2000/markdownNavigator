@@ -9,6 +9,7 @@ import controlTypes
 import textInfos
 import ui
 import re
+import webbrowser
 import winsound
 import config
 import os
@@ -70,6 +71,41 @@ class MarkdownEditorOverlay(ScriptableObject):
 
 	def script_trapNonCommandGesture(self, gesture) -> None:
 		winsound.MessageBeep()
+
+	def _activateLinkAtCaret(self) -> bool:
+		"""Open the Markdown link at the caret, if any."""
+		try:
+			with FastDocumentManager(self) as fdm:
+				lineText = fdm.getText()
+				caretOffset = fdm.initialCaretOffset - fdm.getLineOffset()
+				destination = patterns.getLinkDestinationAtOffset(lineText, caretOffset)
+		except (RuntimeError, NotImplementedError, LookupError, COMError) as e:
+			log.debugWarning(f"MarkdownNavigator: Could not inspect link at caret: {e}")
+			return False
+
+		if destination is None:
+			return False
+
+		try:
+			opened = webbrowser.open(destination)
+		except Exception:
+			log.warning("MarkdownNavigator: Could not open link", exc_info=True)
+			ui.message(_("Unable to open link"))
+			return True
+
+		if not opened:
+			log.warning("MarkdownNavigator: The default browser did not accept the link")
+			ui.message(_("Unable to open link"))
+		return True
+
+	@script(
+		# Translators: Description for the script that opens a Markdown link.
+		description=_("Opens the Markdown link at the caret."),
+		gestures=["kb:enter", "kb:numpadEnter"],
+	)
+	def script_activateLink(self, gesture) -> None:
+		if not getattr(self, "markdownBrowseMode", False) or not self._activateLinkAtCaret():
+			gesture.send()
 
 	def _navigate(
 		self,
